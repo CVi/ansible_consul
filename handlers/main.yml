@@ -1,0 +1,18 @@
+---
+- name: Restart consul
+  listen:
+    - restart consul
+  systemd:
+    name: consul
+    state: restarted
+    daemon_reload: yes
+  when: ansible_service_mgr == 'systemd'
+
+- name: Reload consul
+  listen:
+    - reload consul
+  systemd:
+    name: consul
+    state: reloaded
+    daemon_reload: no
+  when: ansible_service_mgr == 'systemd'

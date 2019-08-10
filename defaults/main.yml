@@ -1,0 +1,48 @@
+---
+consul_version: 1.5.3
+
+consul_user: consul
+consul_group: consul
+
+consul_platform: "{{ go_arch_map[ansible_architecture] }}"
+
+consul_os: "\
+  {% if ansible_os_family == 'Windows' %}\
+    {{ 'windows' }}\
+  {% else %}\
+    {{ ansible_system | lower }}\
+  {% endif %}"
+
+consul_release: "consul_{{ consul_version }}_{{ consul_os }}_{{ consul_platform }}"
+consul_download_fn: "{{ consul_release }}.zip"
+consul_download_url: "https://releases.hashicorp.com/consul/{{ consul_version }}/{{ consul_download_fn }}"
+
+consul_path: "/opt/consul"
+consul_config_path: "/etc/consul"
+consul_config_file: "{{ consul_config_path }}/config.json"
+consul_configd_path: "{{ consul_config_path }}/consul.d"
+consul_data_path: "/var/consul"
+consul_log_path: "/var/log/consul"
+consul_log_file: "{{ consul_log_path }}/consul.log"
+consul_run_path: "/var/run/consul"
+consul_binary: "/usr/local/bin/consul"
+consul_master_nodes: 3
+consul_agent_mode: client
+
+consul_systemd_options: >-
+  -enable-script-checks=true
+  -log-file={{ consul_log_file }}
+  -config-dir={{ consul_configd_path }}
+  -config-file={{ consul_config_file }}
+  {% if consul_agent_mode == 'server' %}
+  -bootstrap-expect={{ consul_master_nodes | int }}
+  {% endif %}
+  {{ consul_masters }}
+
+consul_config:
+  bind_addr: "{{ consul_address | default(ansible_default_ipv4.address)}}"
+  server: "{{ consul_agent_mode == 'server' }}"
+  data_dir: "{{ consul_data_path }}"
+  retry_interval: 300s
+  client_addr: "{{ consul_address | default(ansible_default_ipv4.address)}}"
+  ui: "{{ consul_agent_mode == 'server' }}"

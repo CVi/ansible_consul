@@ -1,0 +1,28 @@
+---
+galaxy_info:
+  role_name: consul
+  author: Christoffer Viken
+  description: Minimal consul setup for small consul deployments
+  company: n/a
+
+  license: license (MIT)
+
+  min_ansible_version: 2.5
+
+  platforms:
+    - name: Ubuntu
+      versions:
+        - xenial
+        - bionic
+    - name: Debian
+      versions:
+        - buster
+        - stretch
+        - jessie
+
+  galaxy_tags:
+    - consul
+    - clustering
+    - system
+
+dependencies: []

@@ -1,0 +1,106 @@
+---
+- name: Install needed packages
+  apt:
+    name:
+      - zip
+    state: present
+
+- name: Create consul group
+  group:
+    name: "{{ consul_group }}"
+    system: yes
+    state: present
+
+- name: Create consul user
+  user:
+    name: "{{ consul_user }}"
+    group: "{{ consul_group }}"
+    shell: "/sbin/nologin"
+    system: yes
+    createhome: no
+
+- name: Create consul directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ consul_user }}"
+    group: "{{ consul_group }}"
+    mode: 0755
+  with_items:
+    - "{{ consul_path }}"
+    - "{{ consul_config_path }}"
+    - "{{ consul_configd_path }}"
+    - "{{ consul_data_path }}"
+    - "{{ consul_run_path }}"
+    - "{{ consul_path }}/{{ consul_release }}"
+
+- name: Download consul binary
+  get_url:
+    url: "{{ consul_download_url }}"
+    dest: "{{ consul_path }}/{{ consul_download_fn }}"
+  register: consul_download
+
+- name: Unarchive consul
+  unarchive:
+    copy: no
+    src: "{{ consul_path }}/{{ consul_download_fn }}"
+    dest: "{{ consul_path }}/{{ consul_release }}"
+    creates: "{{ consul_path }}/{{ consul_release }}/consul"
+  when: consul_download is changed
+  notify: restart consul
+
+- name: Update group and owner for files
+  file:
+    path: "{{ consul_path }}/{{ consul_release }}"
+    state: directory
+    recurse: yes
+    owner: "{{ consul_user }}"
+    group: "{{ consul_group }}"
+
+- name: Create symlink to the current release
+  file:
+    src: "{{ consul_path }}/{{ consul_release }}"
+    path: "{{ consul_path }}/current"
+    state: link
+  notify: restart consul
+
+- name: Create symlink to bin
+  file:
+    src: "{{ consul_path }}/current/consul"
+    path: "{{ consul_binary }}"
+    state: link
+  notify: restart consul
+
+- name: Create consul config file
+  copy:
+    content: "{{ consul_config | to_json(indent=2) }}"
+    dest: "{{ consul_config_file }}"
+    owner: "{{ consul_user }}"
+    group: "{{ consul_group }}"
+    mode: '0644'
+  notify: restart consul
+
+- name: Create service environment file
+  template:
+    src: consul-default.j2
+    dest: /etc/default/consul
+    owner: root
+    group: root
+    mode: 0644
+  notify: restart consul
+
+- name: Create systemd service unit
+  template:
+    src: consul.service.j2
+    dest: /etc/systemd/system/consul.service
+    owner: root
+    group: root
+    mode: 0644
+  notify: restart consul
+
+- name: Ensure consul service is enabled
+  systemd:
+    daemon_reload: yes
+    name: consul
+    enabled: yes
+  when: ansible_service_mgr == 'systemd'
